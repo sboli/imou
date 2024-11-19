@@ -1,0 +1,70 @@
+# Add this to configuration.yaml
+# Change values accordingly
+# Need to create 5 number helpers
+# input_number.[hue,sat,brightness,mode,temp]
+switch:
+  - platform: rest
+    name: my_switch
+    resource: https://imou/products/<product id>/devices/<device id>/properties
+    body_on: '{ "11900": 1, "1002": {{ states("input_number.brightness") }}, "1006": {{ states("input_number.brightness") }}, "1003": {{ states("input_number.temp") }},  "1004": {{ states("input_number.hue") }}, "1005": {{ states("input_number.sat") }}, "1010": {{ states("input_number.mode") }} }'
+    body_off: '{ "11900": 0 }'
+    is_on_template: "{{ value_json['11900'] == 1 }}"
+    headers:
+      Content-Type: application/json
+
+light:
+  - platform: template
+    lights:
+      parents_bedroom_light:
+        friendly_name: 'my_light'
+        level_template: "{{ state_attr('input_number.brightness', 'lux')|int }}"
+        value_template: "{{ states('switch.my_switch') == 'on' }}"
+        hs_template: "({{ states('input_number.hue') | int}}, {{ states('input_number.sat') | int}})"
+        temperature_template: "{{ states('input_number.temp') | int }}"
+        turn_off:
+          service: switch.turn_off
+          target:
+            entity_id: switch.my_switch
+        turn_on:
+          service: switch.turn_on
+          target:
+            entity_id: switch.my_switch
+        set_temperature:
+          - service: input_number.set_value
+            data:
+              value: '{{ 1000000.0 / color_temp }}'
+              entity_id: input_number.temp
+          - service: input_number.set_value
+            data:
+              value: '{{ 0 }}'
+              entity_id: input_number.mode
+          - service: switch.turn_on
+            data_template:
+              entity_id:
+                - switch.my_switch
+        set_level:
+          - service: input_number.set_value
+            data:
+              value: '{{ ((brightness | int) / 255 * 100) | round(0) }}'
+              entity_id: input_number.brightness
+          - service: switch.turn_on
+            data_template:
+              entity_id:
+                - switch.my_switch
+        set_color:
+          - service: input_number.set_value
+            data:
+              value: '{{ h }}'
+              entity_id: input_number.hue
+          - service: input_number.set_value
+            data:
+              value: '{{ 1 }}'
+              entity_id: input_number.mode
+          - service: input_number.set_value
+            data:
+              value: '{{ s }}'
+              entity_id: input_number.sat
+          - service: switch.turn_on
+            data_template:
+              entity_id:
+                - switch.my_switch
