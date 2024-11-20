@@ -1,5 +1,5 @@
 import { HttpService } from '@nestjs/axios';
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
 import * as uuid from 'uuid';
 import * as crypto from 'node:crypto';
 import { firstValueFrom } from 'rxjs';
@@ -19,15 +19,52 @@ function interpolateColorTemp(inputValue: number) {
 
 @Injectable()
 export class ImouService implements OnModuleInit {
+  private readonly logger = new Logger(ImouService.name);
   private accessToken?: string;
   constructor(private readonly http: HttpService) {
     setTimeout(() => {
       this.getAccessToken();
+      this.getMessageCallback().then(console.log);
+      this.setMessageCallback()
+        .then((ok: boolean) => {
+          ok
+            ? this.logger.log(
+                'Callback configured: ' + process.env.CALLBACK_URL,
+              )
+            : this.logger.error(
+                'Error while configuring callback: ' + process.env.CALLBACK_URL,
+              );
+        })
+        .catch(this.logger.error.bind(this));
     }, 1000);
   }
 
   onModuleInit() {
     this.getAccessToken();
+  }
+
+  public async getMessageCallback() {
+    await this.getAccessToken();
+    const res = await this.post('/getMessageCallback', {
+      params: {
+        token: this.accessToken,
+      },
+    });
+    return res.result.data;
+  }
+
+  public async setMessageCallback() {
+    await this.getAccessToken();
+    const res = await this.post('/setMessageCallback', {
+      params: {
+        token: this.accessToken,
+        callbackFlag: 'deviceStatus,alarm',
+        callbackUrl: process.env.CALLBACK_URL,
+        status: 'on',
+        basePush: '1',
+      },
+    });
+    return res.result.code === '0';
   }
 
   public async getDeviceProperty(
