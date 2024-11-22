@@ -58,7 +58,7 @@ export class ImouService implements OnModuleInit {
     const res = await this.post('/setMessageCallback', {
       params: {
         token: this.accessToken,
-        callbackFlag: 'deviceStatus,alarm',
+        callbackFlag: 'deviceStatus',
         callbackUrl: process.env.CALLBACK_URL,
         status: 'on',
         basePush: '1',
